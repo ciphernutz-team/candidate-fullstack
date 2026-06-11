@@ -1,25 +1,27 @@
-import React, { useState, useEffect, createContext, useContext, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
 import axios from 'axios';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-import { User, Shield, Zap } from 'lucide-react';
 
-const SelectionContext = createContext<{
-  selectedIds: number[];
-  toggleSelection: (id: number) => void;
-}>({ selectedIds: [], toggleSelection: () => { } });
+interface Character {
+  id: number;
+  name: string;
+  image: string;
+  status: string;
+  species: string;
+}
 
-const CharacterCard = React.memo(({ character }: { character: any }) => {
-  const { selectedIds, toggleSelection } = useContext(SelectionContext);
-  const isSelected = selectedIds.includes(character.id);
-  
-  const start = performance.now();
-  while (performance.now() - start < 5) {
-  }
+// Only the (stable) toggle handler travels through context. selectedIds stays in
+// the parent and each card receives its own `isSelected` boolean as a prop, so
+// selecting one card re-renders only that card instead of every card on the page.
+const SelectionContext = createContext<{ toggleSelection: (id: number) => void }>({
+  toggleSelection: () => { },
+});
 
-  console.log(`Rendering CharacterCard: ${character.name}`);
+const CharacterCard = React.memo(({ character, isSelected }: { character: Character; isSelected: boolean }) => {
+  const { toggleSelection } = useContext(SelectionContext);
 
   return (
-    <div 
+    <div
       onClick={() => toggleSelection(character.id)}
       className={`p-4 rounded-xl border transition-all cursor-pointer ${
         isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-200'
@@ -36,34 +38,43 @@ const CharacterCard = React.memo(({ character }: { character: any }) => {
 });
 
 const CharacterExplorer = () => {
-  const [characters, setCharacters] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const fetchCharacters = async () => {
+  // Track the next page + whether more pages exist in refs, so fetchCharacters
+  // never reads a stale `page` from a closure. (The previous version closed over
+  // page === 1 and refetched page 1 on every scroll, appending duplicates.)
+  const pageRef = useRef(1);
+  const hasMoreRef = useRef(true);
+
+  const fetchCharacters = useCallback(async () => {
+    if (!hasMoreRef.current) return;
+    const page = pageRef.current;
+    pageRef.current = page + 1; // claim this page synchronously to dedupe concurrent calls
     try {
       const response = await axios.get(`https://rickandmortyapi.com/api/character?page=${page}`);
       setCharacters(prev => [...prev, ...response.data.results]);
-      setPage(p => p + 1);
+      if (!response.data.info?.next) hasMoreRef.current = false;
     } catch (error) {
+      pageRef.current = page; // roll back so this page is retried next time
       console.error('Failed to fetch characters', error);
     }
-  };
+  }, []);
 
-  const [isFetching, setIsFetching] = useInfiniteScroll(fetchCharacters, containerRef);
+  const [isFetching] = useInfiniteScroll(fetchCharacters, containerRef);
 
   useEffect(() => {
     fetchCharacters();
-  }, []);
+  }, [fetchCharacters]);
 
-  const toggleSelection = (id: number) => {
+  const toggleSelection = useCallback((id: number) => {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const contextValue = { selectedIds, toggleSelection };
+  const contextValue = useMemo(() => ({ toggleSelection }), [toggleSelection]);
 
   return (
     <SelectionContext.Provider value={contextValue}>
@@ -82,8 +93,8 @@ const CharacterExplorer = () => {
           ref={containerRef}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 h-[calc(100vh-250px)] overflow-y-auto p-2"
         >
-          {characters.map((char, index) => (
-            <CharacterCard key={`${char.id}-${index}`} character={char} />
+          {characters.map((char) => (
+            <CharacterCard key={char.id} character={char} isSelected={selectedIds.includes(char.id)} />
           ))}
           {isFetching && (
             <div className="col-span-full py-8 text-center text-slate-400">

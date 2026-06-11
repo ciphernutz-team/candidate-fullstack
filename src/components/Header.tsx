@@ -1,18 +1,23 @@
 import React from 'react';
 import { Search, Bell, RefreshCw, User } from 'lucide-react';
-import { useAppDispatch } from '../hooks/redux';
-import { fetchProducts } from '../features/products/productSlice';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { fetchProducts, fetchCatalog } from '../features/products/productSlice';
 import { fetchUserStats } from '../features/users/userSlice';
 import { fetchMarketData } from '../features/market/marketSlice';
 
 const Header = () => {
   const dispatch = useAppDispatch();
+  const { currentPage, limit } = useAppSelector((state) => state.products);
+  const { category, search } = useAppSelector((state) => state.filters);
 
   const handleRefresh = () => {
     // Previously gated on document.getElementById('dashboard-metrics-container'),
     // an id that is never rendered, so the market fetch below was permanently
-    // dead. Refresh now reliably re-fetches all three data sources.
-    dispatch(fetchProducts({ limit: 10, skip: 0 }));
+    // dead. Refresh now reliably re-fetches everything — and re-fetches the
+    // table's CURRENT page + filters (not a hard-coded page 1) so the rows and
+    // pagination footer stay consistent.
+    dispatch(fetchProducts({ limit, skip: (currentPage - 1) * limit, q: search, category }));
+    dispatch(fetchCatalog());
     dispatch(fetchUserStats());
     dispatch(fetchMarketData());
     console.log('Global data refresh requested.');

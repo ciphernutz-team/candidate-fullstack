@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchProducts, setFilteredProducts } from '../features/products/productSlice';
+import { fetchCatalog } from '../features/products/productSlice';
 import { fetchMarketData } from '../features/market/marketSlice';
 import { fetchUserStats } from '../features/users/userSlice';
 import { selectTotalRevenue, selectFilteredProductCount } from '../selectors/revenueSelectors';
@@ -23,25 +23,21 @@ const SALES_TREND_DATA = [
 
 const DashboardPage = () => {
   const dispatch = useAppDispatch();
-  const { items, loading: productsLoading } = useAppSelector(state => state.products);
+  const { catalogLoading } = useAppSelector(state => state.products);
   const { prices, loading: marketLoading } = useAppSelector(state => state.market);
   const { activeUsers, loading: usersLoading } = useAppSelector(state => state.users);
-  const { category, search } = useAppSelector(state => state.filters);
-  // Memoized, filter-aware selectors: these recompute only when the products or
+  // Memoized, filter-aware selectors: these recompute only when the catalog or
   // the active filters change, so the cards track the current category/search.
+  // They read the full catalog (state.products.items), which is loaded once via
+  // fetchCatalog and is never overwritten by the table's paginated fetch.
   const totalRevenue = useAppSelector(selectTotalRevenue);
   const filteredCount = useAppSelector(selectFilteredProductCount);
 
   useEffect(() => {
-    dispatch(fetchProducts({ limit: 100, skip: 0 }));
+    dispatch(fetchCatalog());
     dispatch(fetchMarketData());
     dispatch(fetchUserStats());
   }, [dispatch]);
-
-  useEffect(() => {
-    let filtered = [...items];
-    dispatch(setFilteredProducts(filtered));
-  }, [items, category, search, dispatch]);
 
   return (
     <div className="space-y-8">
@@ -57,7 +53,7 @@ const DashboardPage = () => {
           value={`$${totalRevenue.toLocaleString()}`}
           change={12.5}
           icon={DollarSign}
-          loading={productsLoading}
+          loading={catalogLoading}
         />
         <MetricCard
           title="Products Sold"
@@ -65,7 +61,7 @@ const DashboardPage = () => {
           change={-2.4}
           icon={ShoppingBag}
           color="green"
-          loading={productsLoading}
+          loading={catalogLoading}
         />
         <MetricCard
           title="Active Users"

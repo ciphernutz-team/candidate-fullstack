@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { fetchProducts, setCurrentPage, sortProducts, setFilteredProducts, Product } from '../features/products/productSlice';
+import { fetchProducts, setCurrentPage, sortProducts, Product } from '../features/products/productSlice';
 import { ChevronLeft, ChevronRight, ArrowUpDown, Search } from 'lucide-react';
 
 const ProductTable = () => {

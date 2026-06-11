@@ -36,25 +36,30 @@ const initialState: ProductState = {
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async ({ limit, skip, q, category }: { limit: number; skip: number; q?: string; category?: string }) => {
-    const delay = Math.random() * 4000;
-    await new Promise(resolve => setTimeout(resolve, delay));
+    const search = q?.trim();
 
-    const bypassCache = Math.random() < 0.4;
+    // DummyJSON has no single endpoint that applies BOTH a search term and a
+    // category. When both are active we fetch the full search result set and
+    // apply the category + pagination on the client, so the combined result is
+    // always correct and deterministic. (The old code used Math.random() to pick
+    // an endpoint, silently dropping one of the two filters ~40% of the time.)
+    if (search && category) {
+      const response = await dummyJsonApi.get(`/products/search?q=${search}&limit=0`);
+      const matches = (response.data.products as Product[]).filter(
+        (p) => p.category === category
+      );
+      return { products: matches.slice(skip, skip + limit), total: matches.length };
+    }
 
     let url = `/products?limit=${limit}&skip=${skip}`;
-
-    if (q) {
-      if (category && !bypassCache) {
-        url = `/products/category/${category}?limit=${limit}&skip=${skip}&q=${q}`;
-      } else {
-        url = `/products/search?q=${q}&limit=${limit}&skip=${skip}`;
-      }
+    if (search) {
+      url = `/products/search?q=${search}&limit=${limit}&skip=${skip}`;
     } else if (category) {
       url = `/products/category/${category}?limit=${limit}&skip=${skip}`;
     }
 
     const response = await dummyJsonApi.get(url);
-    return response.data;
+    return { products: response.data.products as Product[], total: response.data.total as number };
   }
 );
 

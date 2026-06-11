@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { setCategory, setSearch } from '../features/filters/filterSlice';
-import { fetchProducts } from '../features/products/productSlice';
 import { dummyJsonApi } from '../services/api';
 
 const FilterPanel = () => {
@@ -9,9 +8,6 @@ const FilterPanel = () => {
   const { category, search } = useAppSelector((state) => state.filters);
   const [localSearch, setLocalSearch] = useState(search);
   const [categories, setCategories] = useState<string[]>([]);
-  
-  const categoryRef = useRef(category);
-  useEffect(() => { categoryRef.current = category; }, [category]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -26,16 +22,18 @@ const FilterPanel = () => {
     fetchCategories();
   }, []);
 
+  // Debounce the search box, then commit it to the store. ProductTable owns the
+  // actual fetch (it reacts to filters.search + filters.category), so we no longer
+  // dispatch a competing fetch here — that was a source of stale/partial results.
   useEffect(() => {
     const timer = setTimeout(() => {
       if (localSearch !== search) {
-        dispatch(fetchProducts({ limit: 10, skip: 0, q: localSearch, category: categoryRef.current }));
         dispatch(setSearch(localSearch));
       }
     }, 500);
-    
+
     return () => clearTimeout(timer);
-  }, [localSearch, dispatch]);
+  }, [localSearch, search, dispatch]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-6 items-end">

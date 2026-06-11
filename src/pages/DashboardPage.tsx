@@ -10,6 +10,17 @@ import TrendChart from '../components/charts/TrendChart';
 import ProductTable from '../components/ProductTable';
 import { DollarSign, ShoppingBag, Users, TrendingUp } from 'lucide-react';
 
+// Static demo series — hoisted to a stable module constant so TrendChart's
+// `[data]` memo isn't invalidated by a fresh array literal on every render.
+const SALES_TREND_DATA = [
+  { name: 'Jan', value: 400 },
+  { name: 'Feb', value: 300 },
+  { name: 'Mar', value: 600 },
+  { name: 'Apr', value: 800 },
+  { name: 'May', value: 500 },
+  { name: 'Jun', value: 900 },
+];
+
 const DashboardPage = () => {
   const dispatch = useAppDispatch();
   const { items, loading: productsLoading } = useAppSelector(state => state.products);
@@ -87,14 +98,7 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TrendChart
           title="Product Sales Trend"
-          data={[
-            { name: 'Jan', value: 400 },
-            { name: 'Feb', value: 300 },
-            { name: 'Mar', value: 600 },
-            { name: 'Apr', value: 800 },
-            { name: 'May', value: 500 },
-            { name: 'Jun', value: 900 },
-          ]}
+          data={SALES_TREND_DATA}
           dataKey="value"
         />
         <TrendChart

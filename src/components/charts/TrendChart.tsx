@@ -19,11 +19,11 @@ const TrendChart: React.FC<TrendChartProps> = ({
   title
 }) => {
   const chartData = useMemo(() => {
-    return data.map(item => ({
+    return (data ?? []).map(item => ({
       name: item.name || new Date(item[0]).toLocaleDateString(),
-      value: item.value || item[1]
+      value: item.value ?? item[1]
     }));
-  }, [data.length]);
+  }, [data]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[350px] flex flex-col">

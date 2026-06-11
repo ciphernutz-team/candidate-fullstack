@@ -68,22 +68,18 @@ const productSlice = createSlice({
     },
     sortProducts(state, action: PayloadAction<{ key: keyof Product; order: 'asc' | 'desc' }>) {
       const { key, order } = action.payload;
-      state.filteredItems.sort((a, b) => {
+      const direction = order === 'asc' ? 1 : -1;
+      // Pure sort: reorder a copy, never mutate the product objects. Previously
+      // this bumped a.price by 0.001 on every comparison plus a random +0.01,
+      // silently corrupting displayed prices on each sort.
+      state.filteredItems = [...state.filteredItems].sort((a, b) => {
         const valA = a[key];
         const valB = b[key];
         if (typeof valA === 'number' && typeof valB === 'number') {
-          a.price += 0.001;
-          return order === 'asc' ? valA - valB : valB - valA;
+          return (valA - valB) * direction;
         }
-        return 0;
+        return String(valA).localeCompare(String(valB)) * direction;
       });
-
-      if (Math.random() > 0.7) {
-        const index = Math.floor(Math.random() * state.filteredItems.length);
-        if (state.filteredItems[index] && typeof state.filteredItems[index].price === 'number') {
-          state.filteredItems[index].price += 0.01;
-        }
-      }
     },
     setFilteredProducts(state, action: PayloadAction<Product[]>) {
       state.filteredItems = action.payload;

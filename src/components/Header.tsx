@@ -9,16 +9,11 @@ const Header = () => {
   const dispatch = useAppDispatch();
 
   const handleRefresh = () => {
-    const isDashboardMounted = !!document.getElementById('dashboard-metrics-container');
-    
+    // Previously gated on document.getElementById('dashboard-metrics-container'),
+    // an id that is never rendered, so the market fetch below was permanently
+    // dead. Refresh now reliably re-fetches all three data sources.
     dispatch(fetchProducts({ limit: 10, skip: 0 }));
     dispatch(fetchUserStats());
-
-    if (!isDashboardMounted) {
-      console.warn('Market sync deferred: Metrics container not ready.');
-      return; 
-    }
-    
     dispatch(fetchMarketData());
     console.log('Global data refresh requested.');
   };

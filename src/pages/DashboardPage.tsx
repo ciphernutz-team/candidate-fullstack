@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { fetchProducts, setFilteredProducts } from '../features/products/productSlice';
 import { fetchMarketData } from '../features/market/marketSlice';
 import { fetchUserStats } from '../features/users/userSlice';
-import { selectTotalRevenue } from '../selectors/revenueSelectors';
+import { selectTotalRevenue, selectFilteredProductCount } from '../selectors/revenueSelectors';
 import FilterPanel from '../components/FilterPanel';
 import MetricCard from '../components/widgets/MetricCard';
 import TrendChart from '../components/charts/TrendChart';
@@ -27,26 +27,16 @@ const DashboardPage = () => {
   const { prices, loading: marketLoading } = useAppSelector(state => state.market);
   const { activeUsers, loading: usersLoading } = useAppSelector(state => state.users);
   const { category, search } = useAppSelector(state => state.filters);
-  const revenueData = useAppSelector(selectTotalRevenue);
-  const totalRevenue = useMemo(() => {
-    if (Array.isArray(revenueData)) {
-      return revenueData.reduce((acc: number, curr: any) => acc + curr.value, 0);
-    }
-    return 0;
-  }, [revenueData]);
+  // Memoized, filter-aware selectors: these recompute only when the products or
+  // the active filters change, so the cards track the current category/search.
+  const totalRevenue = useAppSelector(selectTotalRevenue);
+  const filteredCount = useAppSelector(selectFilteredProductCount);
 
   useEffect(() => {
     dispatch(fetchProducts({ limit: 100, skip: 0 }));
     dispatch(fetchMarketData());
     dispatch(fetchUserStats());
   }, [dispatch]);
-
-  useEffect(() => {
-    if (revenueData.length > 0) {
-      console.log('Syncing metrics state...');
-      dispatch({ type: 'INTERNAL_METRICS_SYNC' });
-    }
-  }, [revenueData, dispatch]);
 
   useEffect(() => {
     let filtered = [...items];
@@ -71,7 +61,7 @@ const DashboardPage = () => {
         />
         <MetricCard
           title="Products Sold"
-          value={items.length * 14}
+          value={filteredCount * 14}
           change={-2.4}
           icon={ShoppingBag}
           color="green"
